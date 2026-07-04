@@ -281,10 +281,15 @@ impl<'input, const RFC: usize, const EFC: usize> Decoder<'input, RFC, EFC> {
         };
 
         let size_constraint = constraints.constraint;
-        if let Some(range) = size_constraint
-            .range()
-            .filter(|range| *range <= SIXTY_FOUR_K as usize)
-        {
+        // X.691 §11.9.4.1 (§10.9.4.1 in pre-2021 editions): the constrained form of
+        // the length determinant applies only when the upper bound of the size
+        // constraint is less than 64K. When `ub >= 64K` — e.g. `SIZE (1..65536)` —
+        // §11.9.4.2 mandates the general form used for unconstrained lengths.
+        if let Some(range) = size_constraint.range().filter(|_| {
+            size_constraint
+                .as_end()
+                .is_some_and(|&ub| ub < SIXTY_FOUR_K as usize)
+        }) {
             if range == 0 {
                 Ok(input)
             } else if range == 1 {
@@ -333,10 +338,15 @@ impl<'input, const RFC: usize, const EFC: usize> Decoder<'input, RFC, EFC> {
         };
 
         let size_constraint = constraints.constraint;
-        if let Some(range) = size_constraint
-            .range()
-            .filter(|range| *range <= SIXTY_FOUR_K as usize)
-        {
+        // X.691 §11.9.4.1 (§10.9.4.1 in pre-2021 editions): the constrained form of
+        // the length determinant applies only when the upper bound of the size
+        // constraint is less than 64K. When `ub >= 64K` — e.g. `SIZE (1..65536)` —
+        // §11.9.4.2 mandates the general form used for unconstrained lengths.
+        if let Some(range) = size_constraint.range().filter(|_| {
+            size_constraint
+                .as_end()
+                .is_some_and(|&ub| ub < SIXTY_FOUR_K as usize)
+        }) {
             if range == 0 {
                 Ok(input)
             } else if range == 1 {
