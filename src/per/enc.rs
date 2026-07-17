@@ -517,7 +517,11 @@ impl<const RCL: usize, const ECL: usize> Encoder<RCL, ECL> {
         let constraints = constraints.constraint;
 
         match constraints.start_and_end() {
-            (Some(_), Some(_)) => {
+            // X.691 §11.9.4.1 (§10.9.4.1 in pre-2021 editions): the constrained form
+            // of the length determinant applies only when the upper bound of the size
+            // constraint is less than 64K. When `ub >= 64K` — e.g. `SIZE (1..65536)` —
+            // §11.9.4.2 mandates the general form used for unconstrained lengths.
+            (Some(_), Some(&ub)) if ub < SIXTY_FOUR_K as usize => {
                 let range = constraints.range().unwrap();
 
                 if range == 0 {
@@ -525,7 +529,7 @@ impl<const RCL: usize, const ECL: usize> Encoder<RCL, ECL> {
                 } else if range == 1 {
                     buffer.extend((encode_fn)(0..length)?);
                     Ok(())
-                } else if range <= SIXTY_FOUR_K as usize {
+                } else {
                     let effective_length = constraints.effective_value(length).into_inner();
                     let range = if self.options.aligned && range > 256 {
                         {
@@ -550,8 +554,6 @@ impl<const RCL: usize, const ECL: usize> Encoder<RCL, ECL> {
 
                     buffer.extend((encode_fn)(0..length)?);
                     Ok(())
-                } else {
-                    self.encode_unconstrained_length(buffer, length, None, encode_fn)
                 }
             }
             _ => self.encode_unconstrained_length(buffer, length, None, encode_fn),
